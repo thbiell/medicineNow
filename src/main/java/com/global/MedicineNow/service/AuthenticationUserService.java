@@ -6,17 +6,18 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.global.MedicineNow.repository.MedicoRepository;
+import com.global.MedicineNow.repository.UserRepository;
 
 @Service
-public class MedicoAuthenticationService implements UserDetailsService {
-
-    @Autowired
-    private MedicoRepository medicoRepository;
-
+public class AuthenticationUserService implements UserDetailsService{
+	
+	@Autowired
+	UserRepository repository;
+	
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return medicoRepository.findByEmail(username)
-            .orElseThrow(() -> new UsernameNotFoundException("Médico não encontrado"));
+        return repository.findByEmail(username)
+            .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
     }
+
 }

@@ -1,0 +1,67 @@
+<html>
+
+<head th:replace="~{base :: head}"></head>
+
+<body>
+	<div th:replace="~{base :: logo}"></div>
+
+	<div class="container">
+		<div th:replace="~{base :: titulo('Gerenciar Frases')}"></div>
+
+		<nav class="navbar navbar-expand navbar-light bg-light d-flex justify-content-between mb-3">
+			<div class="navbar-nav">
+				<a th:classappend="${status} == null ? 'active'" class="nav-item nav-link" href="/home">Todos</a>
+				<a th:classappend="${status} == 'ativa' ? 'active'" class="nav-item nav-link"
+					href="/home/ativa">Ativa</a>
+				<a th:classappend="${status} == 'inativa' ? 'active'" class="nav-item nav-link"
+					href="/home/inativa">Inativa</a>
+			</div>
+			<a href="/frases/formulario"><button class="btn btn-outline-secondary my-2 my-sm-0">Nova frase</button></a>
+		</nav>
+
+		<div class="card mb-3" th:each="frase : ${frases}">
+
+			<th:block th:switch="${frase.status.name()}">
+				<div th:case="'ATIVA'" class="card-header alert-success">Frase ativa</div>
+				<div th:case="'INATIVA'" class="card-header alert-dark">Frase inativa</div>
+			</th:block>
+
+			<div class="card-body">
+				<div class="row">
+					<div class="col-12 col-sm-8 mb-3">
+						<div class="form-group">
+							<label for="id">ID da Frase:</label>
+							<textarea class="form-control" id="id" rows="1" th:text="${frase.id}" readonly></textarea>
+						</div>
+
+						<div class="form-group">
+							<label for="frases">Frases:</label>
+							<textarea class="form-control" id="frases" rows="4" th:text="${frase.txt}"
+								readonly></textarea>
+						</div>
+						<div class="row mt-3">
+							<div class="col-6">
+								<a th:if="${status == 'ativa'}" class="btn btn-danger"
+									href="/frases/delete">
+									<i class="fas fa-trash-alt"></i> Deletar
+								</a>
+								<a th:if="${status == 'inativa'}" class="btn btn-success"
+									href="/frases/ative">
+									<i class="fas fa-check"></i> Ativar
+								</a>
+							</div>
+							<div class="col-6 text-right">
+								<a href="/frases/update" class="btn btn-primary">
+									<i class="fas fa-edit"></i> Alterar
+								</a>
+							</div>
+						</div>
+
+					</div>
+				</div>
+
+			</div>
+		</div>
+</body>
+
+</html>

@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +22,6 @@ import com.global.MedicineNow.exceptions.RestDuplicatedException;
 import com.global.MedicineNow.models.Credencial;
 import com.global.MedicineNow.models.Medico;
 import com.global.MedicineNow.repository.MedicoRepository;
-import com.global.MedicineNow.service.TokenServiceUsuario;
 
 import jakarta.validation.Valid;
 
@@ -30,38 +30,37 @@ import jakarta.validation.Valid;
 public class MedicoController {
 
 	@Autowired
-	MedicoRepository repository;
+    MedicoRepository repository;
 
-	@Autowired
-	AuthenticationManager manager;
+    @Autowired
+    PasswordEncoder encoder;
 
-	@Autowired
-	PasswordEncoder encoder;
+    @PostMapping("/cadastrar")
+    public ResponseEntity<Medico> registrar(@RequestBody @Valid Medico medico) {
+        try {
+            
+            medico.setSenha(encoder.encode(medico.getSenha()));
+            repository.save(medico);
+            return ResponseEntity.status(HttpStatus.CREATED).body(medico);
+        } catch (DataIntegrityViolationException e) {
+            throw new RestDuplicatedException("Já existe um médico com este CRM ou email");
+        }
+    }
 
-	@Autowired
-	TokenServiceUsuario tokenService;
+    @GetMapping("/login")
+    public String login(@RequestBody @Valid Credencial credencial) {
+        Optional<Medico> medicoOptional = repository.findByEmail(credencial.email());
 
-	@PostMapping("/cadastrar")
-	public ResponseEntity<Medico> registrar(@RequestBody @Valid Medico usuario) {
-		try {
+        if (medicoOptional.isPresent()) {
+            Medico medico = medicoOptional.get();
+            if (encoder.matches(credencial.senha(), medico.getSenha())) {
+            	System.out.println("funcionou");
+                return "redirect:/home"; // Redirecionar para a página home
+            }
+        }
 
-			usuario.setSenha(encoder.encode(usuario.getSenha()));
-			repository.save(usuario);
-
-			return ResponseEntity.status(HttpStatus.CREATED).body(usuario);
-
-		} catch (DataIntegrityViolationException e) {
-			throw new RestDuplicatedException("Já existe um usuario com este email");
-		}
-
-	}
-
-	@PostMapping("/login")
-	public ResponseEntity<Object> login(@RequestBody @Valid Credencial credencial) {
-		manager.authenticate(credencial.toAuthentication());
-		var token = tokenService.generateToken(credencial);
-		return ResponseEntity.ok(token);
-	}
+        return "redirect:/login?error=true"; // Redirecionar para a página de login com um parâmetro de erro
+    }
 
 	
 	@PutMapping

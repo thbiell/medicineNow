@@ -10,7 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.global.MedicineNow.service.TokenServiceUsuario;
+import com.global.MedicineNow.service.TokenService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,7 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AuthorizationUserFilter extends OncePerRequestFilter{
 
     @Autowired
-    TokenServiceUsuario tokenService;
+    TokenService tokenService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -30,12 +30,13 @@ public class AuthorizationUserFilter extends OncePerRequestFilter{
         var token = getToken(request);
         
         if (token != null){
-            var usuario = tokenService.valideAndGetUserBy(token);
+            var usuario = tokenService.validateAndGetUserBy(token);
             Authentication auth = new UsernamePasswordAuthenticationToken(usuario.getUsername(), null, usuario.getAuthorities() );
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
         filterChain.doFilter(request, response);
+        
 
     }
 

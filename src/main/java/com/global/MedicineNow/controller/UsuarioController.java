@@ -1,6 +1,12 @@
 package com.global.MedicineNow.controller;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,12 +25,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.global.MedicineNow.dto.DadosAtualizacaoUsuario;
+import com.global.MedicineNow.dto.DadosListagemCofres;
+import com.global.MedicineNow.dto.DadosListagemReceitaUsuario;
+import com.global.MedicineNow.dto.RetiradaMedicamento;
 import com.global.MedicineNow.exceptions.RestDuplicatedException;
 import com.global.MedicineNow.exceptions.TratadorDeErros;
+import com.global.MedicineNow.models.Cofre;
 import com.global.MedicineNow.models.Credencial;
+import com.global.MedicineNow.models.Receita;
 import com.global.MedicineNow.models.Usuario;
 import com.global.MedicineNow.repository.UserRepository;
-import com.global.MedicineNow.service.TokenServiceUsuario;
+import com.global.MedicineNow.repository.CofreRepository;
+import com.global.MedicineNow.repository.ReceitaRepository;
+import com.global.MedicineNow.service.TokenService;
 
 import jakarta.validation.Valid;
 
@@ -34,6 +47,12 @@ public class UsuarioController {
 
 	@Autowired
 	UserRepository repository;
+	
+	@Autowired
+	ReceitaRepository receitaRepository;
+	
+	@Autowired
+	CofreRepository cofreRepository;
 
 	@Autowired
 	AuthenticationManager manager;
@@ -42,7 +61,7 @@ public class UsuarioController {
 	PasswordEncoder encoder;
 
 	@Autowired
-	TokenServiceUsuario tokenService;
+	TokenService tokenService;
 
 	@PostMapping("/cadastrar")
 	public ResponseEntity<Usuario> registrar(@RequestBody @Valid Usuario usuario) {
@@ -112,5 +131,128 @@ public class UsuarioController {
 	
 
 	}
+	
+	
+	@GetMapping("/receitas")
+	public ResponseEntity<List<DadosListagemReceitaUsuario>> getReceitasDoUsuario() {
+	    try {
+	        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	        String email = authentication.getName();
+
+	        Usuario usuario = repository.findByEmail(email)
+	                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+
+	        List<Receita> receitas = receitaRepository.findByUsuarioId(usuario.getId());
+
+	        List<DadosListagemReceitaUsuario> receitasDTO = receitas.stream()
+	                .map(receita -> new DadosListagemReceitaUsuario(
+	                        receita.getId(),
+	                        receita.getMedico().getNome(), 
+	                        receita.getDataPrescricao(),
+	                        receita.getDescricao()))
+	                .collect(Collectors.toList());
+
+	        return ResponseEntity.ok(receitasDTO);
+	    } catch (DataIntegrityViolationException e) {
+	        throw new RestDuplicatedException("Erro ao obter receitas do usuário.");
+	    }
+	}
+
+	
+	@GetMapping("/cofres")
+	public ResponseEntity<List<DadosListagemCofres>> getCofres() {
+	    try {
+	        List<Cofre> cofres = cofreRepository.findAll();
+
+	        List<DadosListagemCofres> response = cofres.stream()
+	                .map(cofre -> {
+	                    List<DadosListagemCofres.MedicamentoDTO> medicamentosDTO = cofre.getMedicamento() != null
+	                            ? List.of(new DadosListagemCofres.MedicamentoDTO(
+	                                    cofre.getMedicamento().getId(),
+	                                    cofre.getMedicamento().getNome(),
+	                                    cofre.getMedicamento().getQuantidade()))
+	                            : List.of();
+
+	                    return new DadosListagemCofres(
+	                            cofre.getId(),
+	                            cofre.getNome(),
+	                            medicamentosDTO);
+	                })
+	                .collect(Collectors.toList());
+
+	        return ResponseEntity.ok(response);
+	    } catch (DataIntegrityViolationException e) {
+	        throw new RestDuplicatedException("Erro ao obter cofres.");
+	    }
+	}
+	
+	@PostMapping("/marcarRetirada")
+	public ResponseEntity<String> marcarRetirada(@RequestBody RetiradaMedicamento retiradaMedicamento) {
+	    try {
+	        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	        String email = authentication.getName();
+
+	        Usuario usuario = repository.findByEmail(email)
+	                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+
+	        boolean medicamentoValido = validarMedicamento(retiradaMedicamento.nomeRemedio(), retiradaMedicamento.nomeCofre());
+	        if (!medicamentoValido) {
+	            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("O medicamento não está disponível neste cofre.");
+	        }
+
+	        boolean receitaValida = validarCodigoReceita(retiradaMedicamento.codigoReceita(), usuario.getId());
+	        if (!receitaValida) {
+	            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Código de receita inválido.");
+	        }
+
+	        String codigoRetirada = gerarCodigoRetirada();
+	        Date dataRetirada = calcularDataRetirada();
+
+	        String mensagem = String.format("Retirada marcada com sucesso. Código: %s. Data de retirada: %s", codigoRetirada, formatarData(dataRetirada));
+	        return ResponseEntity.status(HttpStatus.OK).body(mensagem);
+	    } catch (Exception e) {
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao marcar a retirada");
+	    }
+	}
+
+	private boolean validarMedicamento(String nomeMedicamento, String nomeCofre) {
+	    // Verifica se o medicamento está presente no cofre
+	    Optional<Cofre> cofre = cofreRepository.findByNome(nomeCofre);
+	    
+	    if (cofre.isPresent()) {
+	        // Verifica se o medicamento está associado a este cofre
+	        return cofre.get().getMedicamento() != null && cofre.get().getMedicamento().getNome().equals(nomeMedicamento);
+	    }
+
+	    return false;
+	}
+
+	private boolean validarCodigoReceita(Long codigoReceita, Long usuarioId) {
+	    Optional<Receita> receita = receitaRepository.findById(codigoReceita);
+	    
+	    if (receita.isPresent()) {
+	        return receita.get().getId().equals(usuarioId);
+	    }
+
+	    return false;
+	}
+
+    private String gerarCodigoRetirada() {
+        Random random = new Random();
+        return String.format("%08d", random.nextInt(10000));
+    }
+
+    private Date calcularDataRetirada() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_MONTH, 3);
+        return calendar.getTime();
+    }
+
+    private String formatarData(Date data) {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        return sdf.format(data);
+    }
+
+
 
 }

@@ -21,9 +21,6 @@ public class SecurityConfig {
     @Autowired
     private AuthorizationUserFilter authorizationUserFilter;
 
-    @Autowired
-    private AuthorizationMedicoFilter authorizationMedicoFilter;
-    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf().disable()
@@ -31,9 +28,8 @@ public class SecurityConfig {
                 .and().authorizeHttpRequests()
                 .requestMatchers(HttpMethod.POST, "/api/usuario/cadastrar").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuario/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/medico/cadastrar").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/medico/login").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+                .requestMatchers("/api/medico/**").permitAll() 
                 .anyRequest().authenticated()
                 .and().addFilterBefore(authorizationUserFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -48,6 +44,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-
 }
