@@ -26,16 +26,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.global.MedicineNow.dto.DadosAtualizacaoUsuario;
 import com.global.MedicineNow.dto.DadosListagemCofres;
+import com.global.MedicineNow.dto.DadosListagemFarmacia;
 import com.global.MedicineNow.dto.DadosListagemReceitaUsuario;
 import com.global.MedicineNow.dto.RetiradaMedicamento;
 import com.global.MedicineNow.exceptions.RestDuplicatedException;
 import com.global.MedicineNow.exceptions.TratadorDeErros;
 import com.global.MedicineNow.models.Cofre;
 import com.global.MedicineNow.models.Credencial;
+import com.global.MedicineNow.models.Farmacia;
 import com.global.MedicineNow.models.Receita;
 import com.global.MedicineNow.models.Usuario;
 import com.global.MedicineNow.repository.UserRepository;
 import com.global.MedicineNow.repository.CofreRepository;
+import com.global.MedicineNow.repository.FarmaciaRepository;
 import com.global.MedicineNow.repository.ReceitaRepository;
 import com.global.MedicineNow.service.TokenService;
 
@@ -60,6 +63,10 @@ public class UsuarioController {
 	@Autowired
 	PasswordEncoder encoder;
 
+	@Autowired
+    FarmaciaRepository farmaciaRepository;
+
+	
 	@Autowired
 	TokenService tokenService;
 
@@ -216,11 +223,9 @@ public class UsuarioController {
 	}
 
 	private boolean validarMedicamento(String nomeMedicamento, String nomeCofre) {
-	    // Verifica se o medicamento está presente no cofre
 	    Optional<Cofre> cofre = cofreRepository.findByNome(nomeCofre);
 	    
 	    if (cofre.isPresent()) {
-	        // Verifica se o medicamento está associado a este cofre
 	        return cofre.get().getMedicamento() != null && cofre.get().getMedicamento().getNome().equals(nomeMedicamento);
 	    }
 
@@ -252,7 +257,25 @@ public class UsuarioController {
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         return sdf.format(data);
     }
+    
+    @GetMapping("/farmacias")
+    public ResponseEntity<?> getFarmacias() {
+        try {
+            List<Farmacia> farmacias = farmaciaRepository.findAll();
 
+            List<DadosListagemFarmacia> response = farmacias.stream()
+                    .map(farmacia -> new DadosListagemFarmacia(
+                            farmacia.getId(),
+                            farmacia.getNome(),
+                            farmacia.getEndereco()
+                    ))
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao obter farmácias.");
+        }
+    }
 
 
 }

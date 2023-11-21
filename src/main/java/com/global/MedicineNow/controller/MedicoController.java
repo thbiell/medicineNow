@@ -29,80 +29,94 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/medico")
 public class MedicoController {
 
-	@Autowired
+    @Autowired
     MedicoRepository repository;
 
     @Autowired
     PasswordEncoder encoder;
 
-    @PostMapping("/cadastrar")
-    public ResponseEntity<Medico> registrar(@RequestBody @Valid Medico medico) {
+    @GetMapping("/registrar")
+    public String exibirFormularioRegistro() {
+        // Lógica para exibir o formulário de registro
+        return "registro/formularioRegistro"; // Nome do arquivo HTML (sem extensão)
+    }
+
+    @PostMapping("/registrar")
+    public String processarRegistro(@RequestBody @Valid Medico medico) {
         try {
-            
             medico.setSenha(encoder.encode(medico.getSenha()));
             repository.save(medico);
-            return ResponseEntity.status(HttpStatus.CREATED).body(medico);
+            return "redirect:/login"; // Redirecionar para a página de login após o registro
         } catch (DataIntegrityViolationException e) {
             throw new RestDuplicatedException("Já existe um médico com este CRM ou email");
         }
     }
-
+    
+    
     @GetMapping("/login")
-    public String login(@RequestBody @Valid Credencial credencial) {
+    public String exibirLogin() {
+        // Lógica para exibir o formulário de registro
+        return "login/formularioLogin"; // Nome do arquivo HTML (sem extensão)
+    }
+    
+    
+    @PostMapping("/login")
+    public String processarLogin(@RequestBody @Valid Credencial credencial) {
         Optional<Medico> medicoOptional = repository.findByEmail(credencial.email());
 
         if (medicoOptional.isPresent()) {
             Medico medico = medicoOptional.get();
             if (encoder.matches(credencial.senha(), medico.getSenha())) {
-            	System.out.println("funcionou");
-                return "redirect:/home"; // Redirecionar para a página home
+                System.out.println("funcionou");
+                return "redirect:/home";
             }
         }
 
-        return "redirect:/login?error=true"; // Redirecionar para a página de login com um parâmetro de erro
+        return "redirect:/login?error=true";
     }
 
-	
-	@PutMapping
-	public ResponseEntity<Medico> atualizar(@RequestBody DadosAtualizacaoMedico dadosAtualizacaoUsuario) {
-	    try {
-	        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-	        String email = authentication.getName();
+    @GetMapping("/atualizar")
+    public String exibirFormularioAtualizacao() {
+        // Lógica para exibir o formulário de atualização
+        return "atualizacao/formularioAtualizacao"; // Nome do arquivo HTML (sem extensão)
+    }
 
-	        Medico usuarioSelecionado = repository.findByEmail(email)
-	                .orElseThrow(() -> new RuntimeException("Somente o próprio usuário pode atualizar a própria conta."));
+    @PostMapping("/atualizar")
+    public String processarAtualizacao(@RequestBody DadosAtualizacaoMedico dadosAtualizacaoUsuario) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String email = authentication.getName();
 
-	        if (dadosAtualizacaoUsuario.senha() != null) {
-	            usuarioSelecionado.setSenha(encoder.encode(dadosAtualizacaoUsuario.senha()));
-	        }
-	        if (dadosAtualizacaoUsuario.nome() != null) {
-	            usuarioSelecionado.setNome(dadosAtualizacaoUsuario.nome());
-	        }
-	        if (dadosAtualizacaoUsuario.sobrenome() != null) {
-	            usuarioSelecionado.setSobrenome(dadosAtualizacaoUsuario.sobrenome());
-	        }
-	        if (dadosAtualizacaoUsuario.email() != null) {
-	            usuarioSelecionado.setEmail(dadosAtualizacaoUsuario.email());
-	        }
-	        if (dadosAtualizacaoUsuario.telefone() != null) {
-	            usuarioSelecionado.setTelefone(dadosAtualizacaoUsuario.telefone());
-	        }
-	        if (dadosAtualizacaoUsuario.hospital() != null) {
-	            usuarioSelecionado.setHospital(dadosAtualizacaoUsuario.hospital());
-	        }
-	        if (dadosAtualizacaoUsuario.idade() != null) {
-	            usuarioSelecionado.setIdade(dadosAtualizacaoUsuario.idade());
-	        }
+            Medico medico = repository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Somente o próprio médico pode atualizar a própria conta."));
 
-	        repository.save(usuarioSelecionado);
+            if (dadosAtualizacaoUsuario.senha() != null) {
+                medico.setSenha(encoder.encode(dadosAtualizacaoUsuario.senha()));
+            }
+            if (dadosAtualizacaoUsuario.nome() != null) {
+                medico.setNome(dadosAtualizacaoUsuario.nome());
+            }
+            if (dadosAtualizacaoUsuario.sobrenome() != null) {
+                medico.setSobrenome(dadosAtualizacaoUsuario.sobrenome());
+            }
+            if (dadosAtualizacaoUsuario.email() != null) {
+                medico.setEmail(dadosAtualizacaoUsuario.email());
+            }
+            if (dadosAtualizacaoUsuario.telefone() != null) {
+                medico.setTelefone(dadosAtualizacaoUsuario.telefone());
+            }
+            if (dadosAtualizacaoUsuario.hospital() != null) {
+                medico.setHospital(dadosAtualizacaoUsuario.hospital());
+            }
+            if (dadosAtualizacaoUsuario.idade() != null) {
+                medico.setIdade(dadosAtualizacaoUsuario.idade());
+            }
 
-	        return ResponseEntity.status(HttpStatus.OK).body(usuarioSelecionado);
+            repository.save(medico);
 
-	    } catch (DataIntegrityViolationException e) {
-	        throw new RestDuplicatedException("Já existe um usuário com este email ou telefone");
-	    }
-	
-
-	}
-
+            return "redirect:/home"; // Redirecionar para a página inicial após a atualização
+        } catch (DataIntegrityViolationException e) {
+            throw new RestDuplicatedException("Já existe um médico com este email ou telefone");
+        }
+    }
 }

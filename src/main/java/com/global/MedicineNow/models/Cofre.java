@@ -1,5 +1,6 @@
 package com.global.MedicineNow.models;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -8,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -34,13 +36,13 @@ public class Cofre {
     private String localizacao;
 
     @NotEmpty
-    @Size(min = 10, max = 100)
+    @Size(min = 2, max = 100)
     private String nome;
 
-    @NotEmpty
+    @NotNull
     private boolean ativo;
 
-    @OneToOne
+    @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "medicamento_id")
     private Medicamento medicamento;
 
