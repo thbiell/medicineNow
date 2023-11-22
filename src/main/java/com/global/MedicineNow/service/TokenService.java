@@ -3,8 +3,10 @@ package com.global.MedicineNow.service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.global.MedicineNow.models.Credencial;
+import com.global.MedicineNow.models.Medico;
 import com.global.MedicineNow.models.Token;
 import com.global.MedicineNow.models.Usuario;
+import com.global.MedicineNow.repository.MedicoRepository;
 import com.global.MedicineNow.repository.UserRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class TokenService {
     UserRepository usuarioRepository;
     
 
+    @Autowired
+    MedicoRepository medicoRepository;
+    
 
     @Value("jwt.secret")
     String secret;
@@ -39,16 +44,35 @@ public class TokenService {
 
     public Usuario validateAndGetUserBy(String token) {
         Algorithm alg = Algorithm.HMAC256(secret);
-        var email =  JWT.require(alg)
-            .withIssuer("MedicineNow!")
-            .build()
-            .verify(token)
-            .getSubject()
-            ;
+        try {
+            var email = JWT.require(alg)
+                    .withIssuer("MedicineNow!")
+                    .build()
+                    .verify(token)
+                    .getSubject();
 
-        return usuarioRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+            return usuarioRepository.findByEmail(email).orElse(null);
+        } catch (Exception e) {
+            // Handle exceptions, e.g., TokenExpiredException
+            return null;
+        }
     }
-    
+
+    public Medico validateAndGetMedicoBy(String token) {
+        Algorithm alg = Algorithm.HMAC256(secret);
+        try {
+            var email = JWT.require(alg)
+                    .withIssuer("MedicineNow!")
+                    .build()
+                    .verify(token)
+                    .getSubject();
+
+            return medicoRepository.findByEmail(email).orElse(null);
+        } catch (Exception e) {
+            // Handle exceptions, e.g., TokenExpiredException
+            return null;
+        }
+    }
+
 
 }

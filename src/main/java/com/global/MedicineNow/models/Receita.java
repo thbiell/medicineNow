@@ -2,6 +2,7 @@ package com.global.MedicineNow.models;
 
 import java.util.Date;
 
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,6 +20,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Setter
 @AllArgsConstructor
+@Data
 @Getter
 public class Receita {
 	@Id
@@ -36,7 +38,7 @@ public class Receita {
     @NotNull
     private String descricao;
 
-
+    
     @ManyToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
@@ -65,6 +67,13 @@ public class Receita {
 	}
 	public void setDescricao(String descricao) {
 		this.descricao = descricao;
+		
+	}
+	public Usuario getUsuario() {
+		return usuario;
+	}
+	public void setUsuario(Usuario usuario) {
+		this.usuario = usuario;
 	}
 	
     

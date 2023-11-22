@@ -28,6 +28,8 @@ public class SecurityConfig {
                 .and().authorizeHttpRequests()
                 .requestMatchers(HttpMethod.POST, "/api/usuario/cadastrar").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuario/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/medico/cadastrar").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/medico/login").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                 .requestMatchers("/api/medico/**").permitAll() 
                 .anyRequest().authenticated()

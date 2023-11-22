@@ -2,16 +2,14 @@ package com.global.MedicineNow.models;
 
 
 import java.util.Collection;
-import java.util.List;
 
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -24,6 +22,7 @@ import lombok.Setter;
 @Entity
 @NoArgsConstructor
 @Setter
+@Data
 @AllArgsConstructor
 @Getter
 public class Medico {
@@ -63,7 +62,15 @@ public class Medico {
 	@NotEmpty
 	private String hospital;
 	
+	@OneToMany(mappedBy = "medico")
+	@JsonIgnore
+    private Collection<Receita> receitas;
 	
+	
+	public Collection<Receita> getReceitas() {
+		return receitas;
+	}
+
 	public Long getId() {
 		return id;
 	}

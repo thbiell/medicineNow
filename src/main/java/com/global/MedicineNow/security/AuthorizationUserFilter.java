@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-public class AuthorizationUserFilter extends OncePerRequestFilter{
+public class AuthorizationUserFilter extends OncePerRequestFilter {
 
     @Autowired
     TokenService tokenService;
@@ -27,29 +27,36 @@ public class AuthorizationUserFilter extends OncePerRequestFilter{
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        var token = getToken(request);
-        
-        if (token != null){
-            var usuario = tokenService.validateAndGetUserBy(token);
-            Authentication auth = new UsernamePasswordAuthenticationToken(usuario.getUsername(), null, usuario.getAuthorities() );
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        }
+    	var token = getToken(request);
+
+    	if (token != null) {
+    	    var medico = tokenService.validateAndGetMedicoBy(token);
+    	    var usuario = tokenService.validateAndGetUserBy(token);
+
+    	    if (medico != null) {
+    	        // É um médico
+    	        Authentication authM = new UsernamePasswordAuthenticationToken(medico.getEmail(), null);
+    	        SecurityContextHolder.getContext().setAuthentication(authM);
+    	    } else if (usuario != null) {
+    	        // É um usuário
+    	        Authentication auth = new UsernamePasswordAuthenticationToken(usuario.getUsername(), null, usuario.getAuthorities());
+    	        SecurityContextHolder.getContext().setAuthentication(auth);
+    	    }
+    	}
+    
 
         filterChain.doFilter(request, response);
-        
-
     }
 
     private String getToken(HttpServletRequest request) {
         String prefix = "Bearer ";
-        var header = request.getHeader("Authorization"); 
+        var header = request.getHeader("Authorization");
 
-        if (header == null || header.isEmpty() || !header.startsWith(prefix)){
+        if (header == null || header.isEmpty() || !header.startsWith(prefix)) {
             return null;
         }
 
         return header.replace(prefix, "");
-
     }
-    
 }
+

@@ -1,6 +1,9 @@
 package com.global.MedicineNow.controller;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,10 +21,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.global.MedicineNow.dto.DadosAtualizacaoMedico;
+import com.global.MedicineNow.dto.DadosListagemReceitaMedico;
+import com.global.MedicineNow.dto.DadosListagemReceitaUsuario;
 import com.global.MedicineNow.exceptions.RestDuplicatedException;
 import com.global.MedicineNow.models.Credencial;
 import com.global.MedicineNow.models.Medico;
+import com.global.MedicineNow.models.Receita;
+import com.global.MedicineNow.models.Usuario;
 import com.global.MedicineNow.repository.MedicoRepository;
+import com.global.MedicineNow.repository.ReceitaRepository;
+import com.global.MedicineNow.service.TokenService;
 
 import jakarta.validation.Valid;
 
@@ -29,94 +38,126 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/medico")
 public class MedicoController {
 
-    @Autowired
-    MedicoRepository repository;
+	@Autowired
+	MedicoRepository repository;
 
-    @Autowired
-    PasswordEncoder encoder;
+	@Autowired
+	AuthenticationManager manager;
+	
+	@Autowired
+	ReceitaRepository receitaRepository;
 
-    @GetMapping("/registrar")
-    public String exibirFormularioRegistro() {
-        // Lógica para exibir o formulário de registro
-        return "registro/formularioRegistro"; // Nome do arquivo HTML (sem extensão)
-    }
+	@Autowired
+	PasswordEncoder encoder;
 
-    @PostMapping("/registrar")
-    public String processarRegistro(@RequestBody @Valid Medico medico) {
-        try {
-            medico.setSenha(encoder.encode(medico.getSenha()));
-            repository.save(medico);
-            return "redirect:/login"; // Redirecionar para a página de login após o registro
-        } catch (DataIntegrityViolationException e) {
-            throw new RestDuplicatedException("Já existe um médico com este CRM ou email");
-        }
-    }
-    
-    
-    @GetMapping("/login")
-    public String exibirLogin() {
-        // Lógica para exibir o formulário de registro
-        return "login/formularioLogin"; // Nome do arquivo HTML (sem extensão)
-    }
-    
-    
-    @PostMapping("/login")
-    public String processarLogin(@RequestBody @Valid Credencial credencial) {
-        Optional<Medico> medicoOptional = repository.findByEmail(credencial.email());
+	@Autowired
+	TokenService tokenService;
+	
+	
 
-        if (medicoOptional.isPresent()) {
-            Medico medico = medicoOptional.get();
-            if (encoder.matches(credencial.senha(), medico.getSenha())) {
-                System.out.println("funcionou");
-                return "redirect:/home";
-            }
-        }
+	@PostMapping("/cadastrar")
+	public ResponseEntity<Medico> registrar(@RequestBody @Valid Medico usuario) {
+		try {
 
-        return "redirect:/login?error=true";
-    }
+			usuario.setSenha(encoder.encode(usuario.getSenha()));
+			repository.save(usuario);
 
-    @GetMapping("/atualizar")
-    public String exibirFormularioAtualizacao() {
-        // Lógica para exibir o formulário de atualização
-        return "atualizacao/formularioAtualizacao"; // Nome do arquivo HTML (sem extensão)
-    }
+			return ResponseEntity.status(HttpStatus.CREATED).body(usuario);
 
-    @PostMapping("/atualizar")
-    public String processarAtualizacao(@RequestBody DadosAtualizacaoMedico dadosAtualizacaoUsuario) {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String email = authentication.getName();
+		} catch (DataIntegrityViolationException e) {
+			throw new RestDuplicatedException("Já existe um usuario com este email");
+		}
 
-            Medico medico = repository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("Somente o próprio médico pode atualizar a própria conta."));
+	}
 
-            if (dadosAtualizacaoUsuario.senha() != null) {
-                medico.setSenha(encoder.encode(dadosAtualizacaoUsuario.senha()));
-            }
-            if (dadosAtualizacaoUsuario.nome() != null) {
-                medico.setNome(dadosAtualizacaoUsuario.nome());
-            }
-            if (dadosAtualizacaoUsuario.sobrenome() != null) {
-                medico.setSobrenome(dadosAtualizacaoUsuario.sobrenome());
-            }
-            if (dadosAtualizacaoUsuario.email() != null) {
-                medico.setEmail(dadosAtualizacaoUsuario.email());
-            }
-            if (dadosAtualizacaoUsuario.telefone() != null) {
-                medico.setTelefone(dadosAtualizacaoUsuario.telefone());
-            }
-            if (dadosAtualizacaoUsuario.hospital() != null) {
-                medico.setHospital(dadosAtualizacaoUsuario.hospital());
-            }
-            if (dadosAtualizacaoUsuario.idade() != null) {
-                medico.setIdade(dadosAtualizacaoUsuario.idade());
-            }
+	@PostMapping("/login")
+	public ResponseEntity<Object> login(@RequestBody @Valid Credencial credencial) {
+		Optional<Medico> medicoOptional = repository.findByEmail(credencial.email());
+		var token = tokenService.generateToken(credencial);
+		return ResponseEntity.ok(token);
+	}
+	
+	
+	
 
-            repository.save(medico);
+	@PutMapping
+	public ResponseEntity<Medico> atualizar(@RequestBody DadosAtualizacaoMedico dadosAtualizacaoUsuario) {
+		try {
+			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			String email = authentication.getName();
+			Medico usuarioSelecionado = repository.findByEmail(email).orElseThrow(
+					() -> new RuntimeException("Somente o próprio usuário pode atualizar a própria conta."));
+			if (dadosAtualizacaoUsuario.senha() != null) {
+				usuarioSelecionado.setSenha(encoder.encode(dadosAtualizacaoUsuario.senha()));
+			}
+			if (dadosAtualizacaoUsuario.nome() != null) {
+				usuarioSelecionado.setNome(dadosAtualizacaoUsuario.nome());
+			}
+			if (dadosAtualizacaoUsuario.sobrenome() != null) {
+				usuarioSelecionado.setSobrenome(dadosAtualizacaoUsuario.sobrenome());
+			}
+			if (dadosAtualizacaoUsuario.email() != null) {
+				usuarioSelecionado.setEmail(dadosAtualizacaoUsuario.email());
+			}
+			if (dadosAtualizacaoUsuario.telefone() != null) {
+				usuarioSelecionado.setTelefone(dadosAtualizacaoUsuario.telefone());
+			}
+			if (dadosAtualizacaoUsuario.hospital() != null) {
+				usuarioSelecionado.setHospital(dadosAtualizacaoUsuario.hospital());
+			}
+			if (dadosAtualizacaoUsuario.idade() != null) {
+				usuarioSelecionado.setIdade(dadosAtualizacaoUsuario.idade());
+			}
+			repository.save(usuarioSelecionado);
+			return ResponseEntity.status(HttpStatus.OK).body(usuarioSelecionado);
+		} catch (DataIntegrityViolationException e) {
+			throw new RestDuplicatedException("Já existe um usuário com este email ou telefone");
+		}
 
-            return "redirect:/home"; // Redirecionar para a página inicial após a atualização
-        } catch (DataIntegrityViolationException e) {
-            throw new RestDuplicatedException("Já existe um médico com este email ou telefone");
-        }
-    }
+	}
+
+	@PostMapping("/cadastrar-receita")
+	public ResponseEntity<Receita> cadastrarReceita(@RequestBody @Valid Receita receita) {
+		try {
+			Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+			String email = authentication.getName();
+
+			Medico medico = repository.findByEmail(email)
+					.orElseThrow(() -> new RuntimeException("Médico não encontrado"));
+
+			receita.setMedico(medico);
+			
+			receitaRepository.save(receita);
+
+			return ResponseEntity.status(HttpStatus.CREATED).body(receita);
+		} catch (DataIntegrityViolationException e) {
+			throw new RestDuplicatedException("Erro ao cadastrar a receita");
+		}
+	}
+
+	@GetMapping("/receitas")
+	public ResponseEntity<List<DadosListagemReceitaMedico>> getReceitasDoMedico() {
+	    try {
+	        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	        String email = authentication.getName();
+
+	        Medico medico = repository.findByEmail(email)
+	                .orElseThrow(() -> new RuntimeException("Medico não encontrado."));
+
+	        Collection<Receita> receitas = medico.getReceitas();
+
+
+	        List<DadosListagemReceitaMedico> receitasDTO = receitas.stream()
+	                .map(receita -> new DadosListagemReceitaMedico(
+	                        receita.getId(),
+	                        receita.getUsuario().getNome(),
+	                        receita.getDataPrescricao(),
+	                        receita.getDescricao()))
+	                .collect(Collectors.toList());
+
+	        return ResponseEntity.ok(receitasDTO);
+	    } catch (DataIntegrityViolationException e) {
+	        throw new RestDuplicatedException("Erro ao obter receitas do usuário.");
+	    }
+	}
 }
