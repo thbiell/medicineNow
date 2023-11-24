@@ -72,10 +72,16 @@ public class MedicoController {
 
 	@PostMapping("/login")
 	public ResponseEntity<Object> login(@RequestBody @Valid Credencial credencial) {
-		Optional<Medico> medicoOptional = repository.findByEmail(credencial.email());
-		var token = tokenService.generateToken(credencial);
-		return ResponseEntity.ok(token);
+	    Optional<Medico> medicoOptional = repository.findByEmail(credencial.email());
+
+	    if (medicoOptional.isPresent() && encoder.matches(credencial.senha(), medicoOptional.get().getSenha())) {
+	        var token = tokenService.generateToken(credencial);
+	        return ResponseEntity.ok(token);
+	    } else {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+	    }
 	}
+
 	
 	
 	
