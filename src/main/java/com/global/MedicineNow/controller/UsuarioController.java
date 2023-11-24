@@ -233,14 +233,11 @@ public class UsuarioController {
 	}
 
 	private boolean validarCodigoReceita(Long codigoReceita, Long usuarioId) {
-	    Optional<Receita> receita = receitaRepository.findById(codigoReceita);
-	    
-	    if (receita.isPresent()) {
-	        return receita.get().getId().equals(usuarioId);
-	    }
+    Optional<Receita> receita = receitaRepository.findById(codigoReceita);
+    
+    return receita.map(r -> r.getUsuario().getId().equals(usuarioId)).orElse(false);
+}
 
-	    return false;
-	}
 
     private String gerarCodigoRetirada() {
         Random random = new Random();
